@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>おかしキャッチ</title>
+<style>
+body{margin:0;overflow:hidden;font-family:sans-serif;background:#ffe4f1}
+#game{position:relative;width:100vw;height:100vh;background:linear-gradient(#9be7ff,#fff0b8)}
+#player{position:absolute;bottom:25px;left:45vw;font-size:60px}
+.item{position:absolute;font-size:42px}
+#ui{position:absolute;top:15px;left:15px;font-size:24px;font-weight:bold}
+#msg{position:absolute;top:38%;width:100%;text-align:center;font-size:28px;font-weight:bold}
+button{font-size:22px;padding:12px 24px;border-radius:14px;border:0}
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="ui">スコア: <span id="score">0</span>　HP: <span id="hp">3</span></div>
+  <div id="msg">
+    🍭おかしキャッチ🍩<br><br>
+    左右に動いておかしをキャッチ！<br>
+    💣はよけてね<br><br>
+    <button onclick="startGame()">スタート</button>
+  </div>
+  <div id="player">🧺</div>
+</div>
+
+<script>
+const game = document.getElementById("game");
+const player = document.getElementById("player");
+const scoreEl = document.getElementById("score");
+const hpEl = document.getElementById("hp");
+const msg = document.getElementById("msg");
+
+let score = 0;
+let hp = 3;
+let playerX = window.innerWidth / 2;
+let items = [];
+let running = false;
+let speed = 3;
+
+const sweets = ["🍭","🍩","🍓","🍪","🍰","🍎"];
+
+function startGame(){
+  score = 0;
+  hp = 3;
+  speed = 3;
+  items = [];
+  running = true;
+  msg.style.display = "none";
+  scoreEl.textContent = score;
+  hpEl.textContent = hp;
+  loop();
+  setInterval(createItem, 650);
+}
+
+function createItem(){
+  if(!running) return;
+
+  const item = document.createElement("div");
+  item.className = "item";
+
+  const isBomb = Math.random() < 0.22;
+  item.textContent = isBomb ? "💣" : sweets[Math.floor(Math.random()*sweets.length)];
+
+  item.dataset.type = isBomb ? "bomb" : "sweet";
+  item.style.left = Math.random() * (window.innerWidth - 50) + "px";
+  item.style.top = "-50px";
+
+  game.appendChild(item);
+  items.push({el:item, y:-50});
+}
+
+function movePlayer(dx){
+  playerX += dx;
+  if(playerX < 10) playerX = 10;
+  if(playerX > window.innerWidth - 70) playerX = window.innerWidth - 70;
+  player.style.left = playerX + "px";
+}
+
+document.addEventListener("touchmove", e=>{
+  playerX = e.touches[0].clientX - 30;
+  movePlayer(0);
+});
+
+document.addEventListener("keydown", e=>{
+  if(e.key === "ArrowLeft") movePlayer(-35);
+  if(e.key === "ArrowRight") movePlayer(35);
+});
+
+window.addEventListener("deviceorientation", e=>{
+  if(e.gamma) movePlayer(e.gamma * 0.8);
+});
+
+function loop(){
+  if(!running) return;
+
+  const p = player.getBoundingClientRect();
+
+  items.forEach((obj, index)=>{
+    obj.y += speed;
+    obj.el.style.top = obj.y + "px";
+
+    const r = obj.el.getBoundingClientRect();
+
+    if(r.top > window.innerHeight){
+      obj.el.remove();
+      items.splice(index,1);
+    }
+
+    if(
+      p.left < r.right &&
+      p.right > r.left &&
+      p.top < r.bottom &&
+      p.bottom > r.top
+    ){
+      if(obj.el.dataset.type === "bomb"){
+        hp--;
+        hpEl.textContent = hp;
+      }else{
+        score++;
+        scoreEl.textContent = score;
+        if(score % 5 === 0) speed += 0.4;
+      }
+
+      obj.el.remove();
+      items.splice(index,1);
+
+      if(hp <= 0){
+        endGame();
+      }
+    }
+  });
+
+  requestAnimationFrame(loop);
+}
+
+function endGame(){
+  running = false;
+  msg.style.display = "block";
+  msg.innerHTML = "ゲームオーバー！<br><br>スコア: " + score + "<br><br><button onclick='location.reload()'>もう一回</button>";
+}
+</script>
+</body>
+</html>
